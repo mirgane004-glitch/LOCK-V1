@@ -1,0 +1,52 @@
+#include <ESP8266WiFi.h>
+
+const char* ssid = "Ajay";
+const char* password = "Dr.Strange";
+const char* serverIP = "10.216.16.251";
+
+WiFiClient client;
+
+#define reedPin D5      // 🔥 YOU ARE USING D5
+#define DOOR_NUMBER 1   // Change 1-4 for each ESP
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(reedPin, INPUT_PULLUP);
+
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+  }
+}
+
+void loop() {
+
+  int reedState = digitalRead(reedPin);
+  String status;
+
+  // INPUT_PULLUP logic
+  if (reedState == LOW) {
+    status = "CLOSED";   // Magnet near
+  } else {
+    status = "OPEN";     // Magnet away
+  }
+
+  Serial.println(status);
+
+  if (client.connect(serverIP, 80)) {
+    client.print("GET /DOOR");
+    client.print(DOOR_NUMBER);
+    client.print(":");
+    client.print(status);
+    client.println(" HTTP/1.1");
+
+    client.print("Host: ");
+    client.println(serverIP);
+    client.println("Connection: close");
+    client.println();
+
+    client.stop();
+  }
+
+  delay(1000);
+}

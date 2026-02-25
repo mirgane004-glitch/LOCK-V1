@@ -1,0 +1,127 @@
+#include <ESP8266WiFi.h>
+#include <LiquidCrystal_I2C.h>
+
+const char* ssid = "Ajay";
+const char* password = "Dr.Strange";
+
+IPAddress local_IP(10, 216, 16, 251);
+IPAddress gateway(10, 216, 16, 1);
+IPAddress subnet(255, 255, 255, 0);
+
+WiFiServer server(80);
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+String doorStatus[4] = {"UNKNOWN","UNKNOWN","UNKNOWN","UNKNOWN"};
+
+void setup() {
+  Serial.begin(115200);
+
+  lcd.init();
+  lcd.backlight();
+  lcd.print("Connecting WiFi");
+
+  WiFi.mode(WIFI_STA);
+  WiFi.config(local_IP, gateway, subnet);
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("\nConnected!");
+  Serial.println(WiFi.localIP());
+
+  lcd.clear();
+  lcd.print("Server Ready");
+
+  server.begin();
+}
+
+void loop() {
+
+  WiFiClient client = server.available();
+  if (!client) return;
+
+  unsigned long timeout = millis();
+  while (client.connected() && !client.available()) {
+    if (millis() - timeout > 2000) {
+      client.stop();
+      return;
+    }
+  }
+
+  String request = client.readStringUntil('\n');
+  Serial.println(request);
+
+  // ===== RECEIVE FROM CLIENT ESP =====
+  for(int i = 1; i <= 4; i++) {
+    String tag = "GET /DOOR" + String(i) + ":";
+    if (request.indexOf(tag) >= 0) {
+
+      int startIndex = request.indexOf(tag) + tag.length();
+      int endIndex = request.indexOf(" ", startIndex);
+      doorStatus[i-1] = request.substring(startIndex, endIndex);
+    }
+  }
+
+  // ===== HANDLE STATUS REQUEST =====
+  if (request.indexOf("GET /status") >= 0) {
+
+    String json = "{";
+    for(int i=0;i<4;i++){
+      json += "\"D" + String(i+1) + "\":\"" + doorStatus[i] + "\"";
+      if(i<3) json += ",";
+    }
+    json += "}";
+
+    client.println("HTTP/1.1 200 OK");
+    client.println("Content-Type: application/json");
+    client.println("Content-Length: " + String(json.length()));
+    client.println("Connection: close");
+    client.println();
+    client.println(json);
+    client.stop();
+    return;
+  }
+
+  // ===== MAIN PAGE =====
+  String html = "<!DOCTYPE html><html><head>";
+  html += "<title>Door Monitor</title></head>";
+  html += "<body style='text-align:center;font-family:Arial;'>";
+  html += "<h2>Real-Time Door Status</h2>";
+
+  for(int i=1;i<=4;i++){
+    html += "<div id='D"+String(i)+"' style='font-size:28px;margin:10px;'>Loading...</div>";
+  }
+
+  html += "<script>";
+  html += "setInterval(function(){";
+  html += "fetch('/status')";
+  html += ".then(res=>res.json())";
+  html += ".then(data=>{";
+  html += "for(let i=1;i<=4;i++){";
+  html += "document.getElementById('D'+i).innerHTML='DOOR '+i+' : '+data['D'+i];";
+  html += "}";
+  html += "});";
+  html += "},1000);";
+  html += "</script></body></html>";
+
+  client.println("HTTP/1.1 200 OK");
+  client.println("Content-Type: text/html");
+  client.println("Content-Length: " + String(html.length()));
+  client.println("Connection: close");
+  client.println();
+  client.println(html);
+
+  client.stop();
+
+  // ===== LCD UPDATE =====
+  lcd.setCursor(0,0);
+  lcd.print("D1:" + doorStatus[0] + " ");
+  lcd.print("D2:" + doorStatus[1] + "  ");
+
+  lcd.setCursor(0,1);
+  lcd.print("D3:" + doorStatus[2] + " ");
+  lcd.print("D4:" + doorStatus[3] + "  ");
+}
