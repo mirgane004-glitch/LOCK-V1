@@ -1,0 +1,33 @@
+#include <ESP8266WiFi.h>
+
+const char* ssid = "Redmi 13C 5G";
+const char* password = "09876543210";
+
+IPAddress local_IP(10, 201, 111, 251);   // Static IP
+IPAddress gateway(10, 201, 111, 1);      // Gateway (usually router IP)
+IPAddress subnet(255, 255, 255, 0);      // Subnet mask
+
+void setup() {
+  Serial.begin(115200);
+
+  // Set Static IP
+  WiFi.config(local_IP, gateway, subnet);
+
+  WiFi.begin(ssid, password);
+
+  Serial.print("Connecting");
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println();
+  Serial.println("WiFi Connected");
+
+  Serial.print("ESP8266 Static IP: ");
+  Serial.println(WiFi.localIP());
+}
+
+void loop() {
+}
