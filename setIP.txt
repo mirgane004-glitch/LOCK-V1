@@ -1,7 +1,7 @@
 #include <ESP8266WiFi.h>
 
-const char* ssid = "Redmi 13C 5G";
-const char* password = "09876543210";
+const char* ssid = "WIFI";
+const char* password = "12345678";
 
 IPAddress local_IP(10, 201, 111, 251);   // Static IP
 IPAddress gateway(10, 201, 111, 1);      // Gateway (usually router IP)
