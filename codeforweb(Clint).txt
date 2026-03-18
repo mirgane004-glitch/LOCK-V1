@@ -1,22 +1,29 @@
 #include <ESP8266WiFi.h>
 
-const char* ssid = "Ajay";
-const char* password = "Dr.Strange";
-const char* serverIP = "10.216.16.251";
+const char* ssid = "WIFI NAME ";
+const char* password = "WIFI PASSWORD";
+const char* serverIP = "IP ADDRESS OF ESP ( STATIC IP ADDRESS )";
 
 WiFiClient client;
 
-#define reedPin D5      // 🔥 YOU ARE USING D5
-#define DOOR_NUMBER 1   // Change 1-4 for each ESP
+#define reedPin D5
+#define DOOR_NUMBER 1 // Change according to CLINT NUMBER
 
 void setup() {
+
   Serial.begin(115200);
   pinMode(reedPin, INPUT_PULLUP);
 
   WiFi.begin(ssid, password);
+
+  Serial.print("Connecting WiFi");
+
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
+    Serial.print(".");
   }
+
+  Serial.println("\nConnected");
 }
 
 void loop() {
@@ -24,16 +31,16 @@ void loop() {
   int reedState = digitalRead(reedPin);
   String status;
 
-  // INPUT_PULLUP logic
   if (reedState == LOW) {
-    status = "CLOSED";   // Magnet near
+    status = "CLOSED";
   } else {
-    status = "OPEN";     // Magnet away
+    status = "OPEN";
   }
 
   Serial.println(status);
 
   if (client.connect(serverIP, 80)) {
+
     client.print("GET /DOOR");
     client.print(DOOR_NUMBER);
     client.print(":");
@@ -42,6 +49,7 @@ void loop() {
 
     client.print("Host: ");
     client.println(serverIP);
+
     client.println("Connection: close");
     client.println();
 
